@@ -84,7 +84,7 @@ def retrieve_user_data(user_id):
 #route of post image
 @app.route("/predict", methods=["POST"])
 @validate_token
-def index(user_id):
+def predict():
     file = request.files.get('file')
     
 
@@ -114,7 +114,10 @@ def index(user_id):
     # Check if user data already exists in Firestore
     users_ref = db.collection('users')
     query = users_ref.where('user_id', '==', request.user_id).limit(1)
-    existing_data = query.stream()
+    existing_data = list(query.stream()) 
+
+    # Initialize the data dictionary
+    data = {}
 
     if existing_data:
         # Iterate over the existing user data (assuming there is only one)
