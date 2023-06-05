@@ -61,7 +61,7 @@ def validate_token(f):
             user = firebase_admin.auth.get_user(decoded_token['uid'])
             request.username = user.display_name
         except firebase_admin.auth.InvalidIdTokenError:
-            return jsonify({'error': 'Unauthorized'}), 403
+            return jsonify({'error': 'Unauthorized'}), 402
         except firebase_admin.auth.ExpiredIdTokenError:
             return jsonify({"error": "Expired authorization token"}), 401
 
@@ -84,7 +84,7 @@ def retrieve_user_data(user_id):
 #route of post image
 @app.route("/predict", methods=["POST"])
 @validate_token
-def index(user_id):
+def predict():
     file = request.files.get('file')
     
 
@@ -114,7 +114,10 @@ def index(user_id):
     # Check if user data already exists in Firestore
     users_ref = db.collection('users')
     query = users_ref.where('user_id', '==', request.user_id).limit(1)
-    existing_data = query.stream()
+    existing_data = list(query.stream()) 
+
+     # Initialize the data dictionary
+    data = {}
 
     if existing_data:
         # Iterate over the existing user data (assuming there is only one)
@@ -199,10 +202,26 @@ def register():
         error_message = str(e)
         return jsonify({'error': 'Registration failed', 'message': error_message}), 400
 
-   
+#this function is only for backend debugging       
+def create_custom_token(uid):
+    custom_token = auth.create_custom_token(uid)
+    return custom_token
 
-
+@app.route('/signin', methods=['POST'])
+def signin():
+    email = request.json['email']
+    user = auth.get_user_by_email(email)
+    if user:
+        try:
+            custom_token = create_custom_token(user.uid)
+            return {'token': custom_token.decode('utf-8')}
+        except ValueError:
+            return {'error': 'Invalid password'}
+    else:
+        return {'error': 'User not found'}
     
+   
+   
 @app.route("/user/<user_id>", methods=["GET"])
 @validate_token
 def get_user_data(user_id):
@@ -213,7 +232,7 @@ def get_user_data(user_id):
     # Retrieve user data from Firestore
     users_ref = db.collection('users')
     query = users_ref.where('user_id', '==', user_id).limit(1)
-    user_data = query.stream()
+    user_data = list(query.stream()) 
 
     if user_data:
         # Iterate over the user data (assuming there is only one)
