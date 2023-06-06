@@ -144,8 +144,10 @@ def predict():
     img = img.resize((224,224), Image.NEAREST)
     pred_img = predict_label(img)
 
+    if pred_img is None:
+        pred_img = 'Your plant is not found'
 
-     # Generate UUID for the document in Firestore
+    # Generate UUID for the document in Firestore
     uuid = str(uuid4())
 
     # Check if user data already exists in Firestore
@@ -330,23 +332,33 @@ def delete_plant(user_id, plant_index):
             # Remove the plant at the specified index
             deleted_plant = plant_list.pop(plant_index)
 
+            # Get the bucket reference
+            bucket = storage_client.bucket('img-plant')
+            
             # Create the subdirectory based on the username
             subdirectory = f"{user_id}/"
 
-            # Get the bucket reference
-            bucket = storage_client.bucket('img-plant')
-
             # Generate the file name
             filename = f"{plant_index}.jpg"
-
+            
             # Delete the file from the subdirectory in the bucket
             blob = bucket.blob(subdirectory + filename)
-            blob.delete()
+            if bucket.get_blob(subdirectory+filename):
+                blob.delete()
+                # Update the index values or rename the remaining images
+                blobs = bucket.list_blobs(prefix=subdirectory)
+                for blob in blobs:
+                    if blob.name != subdirectory + filename:
+                        old_filename = blob.name.split('/')[-1]
+                        old_index = int(old_filename.split('.')[0])
+                        if old_index > plant_index:
+                            new_index = old_index - 1
+                            new_filename = f"{new_index}.jpg"
+                            bucket.rename_blob(blob, new_name=subdirectory+new_filename)
 
             # Update the index values of the remaining plants in the list
             for i, plant in enumerate(plant_list):
                 plant['index'] = i
-
                 
             # Update the plant list in the user's document
             user_doc_ref.update({'plant': plant_list})
@@ -356,18 +368,7 @@ def delete_plant(user_id, plant_index):
                 'error': False,
                 'data': deleted_plant
             }
-            # Update the index values or rename the remaining images
-            blobs = bucket.list_blobs(prefix=subdirectory)
-            for blob in blobs:
-                if blob.name != subdirectory + filename:
-                    old_filename = blob.name.split('/')[-1]
-                    old_index = int(old_filename.split('.')[0])
-                    if old_index > plant_index:
-                        new_index = old_index - 1
-                        new_filename = f"{new_index}.jpg"
-                        new_blob = bucket.rename_blob(blob, new_name=subdirectory+new_filename)
             
-
             return jsonify(response_data), 200
     else:
         return jsonify({"error": True, "message": "User not found"}), 404
