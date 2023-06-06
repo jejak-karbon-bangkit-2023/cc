@@ -1,6 +1,4 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
 import io
 import requests
 import tensorflow
@@ -8,7 +6,6 @@ from tensorflow import keras
 import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
-from google.oauth2 import service_account
 from google.cloud import firestore, storage
 import firebase_admin
 from firebase_admin import auth, credentials
@@ -69,16 +66,6 @@ def validate_token(f):
     return decorated_function
 
 
-def retrieve_user_data(user_id):
-    # Retrieve user data from Firestore
-    query = db.collection('users').where('user_id', '==', user_id).limit(1)
-    result = query.stream()
-
-    for doc in result:
-        user_data = doc.to_dict()
-        return user_data
-
-    return None
    
 
 #route of post image
@@ -192,7 +179,7 @@ def register():
     display_name = request.json.get("display_name")
 
     try:
-        user = auth.create_user(
+        auth.create_user(
             email=email,
             password=password,
             display_name=display_name
