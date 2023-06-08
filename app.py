@@ -11,7 +11,7 @@ import firebase_admin
 from firebase_admin import auth, credentials
 from uuid import uuid4
 from functools import wraps
-
+from flask_restful import Api
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/service-account.json'
 
@@ -144,8 +144,7 @@ def predict():
     img = img.resize((224,224), Image.NEAREST)
     pred_img = predict_label(img)
 
-    if pred_img is None:
-        pred_img = 'Your plant is not found'
+
 
     # Generate UUID for the document in Firestore
     uuid = str(uuid4())
@@ -245,21 +244,18 @@ def register():
 def create_custom_token(uid):
     custom_token = auth.create_custom_token(uid)
     return custom_token
-
+    
 @app.route('/signin', methods=['POST'])
 def signin():
     email = request.json['email']
-    user = auth.get_user_by_email(email)
-    if user:
-        try:
-            custom_token = create_custom_token(user.uid)
-            return {'token': custom_token.decode('utf-8')}
-        except ValueError:
-            return {'error': 'Invalid password'}
-    else:
-        return {'error': 'User not found'}
+    try:     
+        user = auth.get_user_by_email(email)
+        custom_token = create_custom_token(user.uid)
+        return {'token': custom_token.decode('utf-8')}, 200
+    except Exception as e:
+        return {'error': str(e)}, 500
     
-   
+ 
    
 @app.route("/user/<user_id>", methods=["GET"])
 @validate_token
