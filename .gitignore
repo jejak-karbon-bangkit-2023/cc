@@ -3,3 +3,4 @@ config
 model.h5
 __pycache__
 node_modules
+model_v2.h5
