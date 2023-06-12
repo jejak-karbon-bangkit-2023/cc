@@ -230,6 +230,22 @@ def predict():
             # Update the data object with the updated plant list
             data['plant'] = existing_plant_list
 
+            # Calculate the sum of c_in from all indices in the plant object
+            c_in_sum = sum(plant['c_in'] for plant in existing_plant_list)
+
+            # Update the data object with the multiplied c_in_sum
+            data['c_in_sum'] = c_in_sum
+
+            # Update the existing data with the updated plant list and c_in_sum
+            doc.reference.update({
+                    'transport': existing_plant_list,
+                    'c_in_sum': c_in_sum
+                })
+
+            return jsonify({"data": data, "error": False, "message": "Transport data added successfully"}), 200
+
+
+
     else:
         # Create data object to be stored in Firestore with initial plant
         data = {
@@ -237,6 +253,7 @@ def predict():
             'user_id': request.user_id,
             'email': request.email,
             'name': request.username,
+            'c_in_sum':c_in,
             'plant': [
                 {
                     'index': 0,
@@ -326,6 +343,15 @@ def get_user_data(user_id):
                 for i, transport in enumerate(transport_list):
                     transport['index'] = i
 
+                c_out_sum=user_doc.get('c_out_sum',0) 
+                c_in_sum=user_doc.get('c_in_sum',0) 
+
+                c_score= c_in_sum + c_out_sum
+                if c_score >= 0:
+                    status="Manusia Hijau"
+                else:
+                    status="Manusia Merah"
+
                 response_data = {
                     'message': 'User retrieved successfully',
                     'error': False,
@@ -334,7 +360,9 @@ def get_user_data(user_id):
                         'email': request.email,
                         'name': request.username,
                         'plant': plant_list,
-                        'transport':transport_list
+                        'transport':transport_list,
+                        'c_score':c_score,
+                        'status':status
 
                     }
                 }
@@ -516,13 +544,32 @@ def emission():
                 # Update the data object with the updated transport list
                 data['transport'] = existing_transport_list
 
+                # Calculate the sum of c_out from all indices in the transport object
+                c_out_sum = sum(transport['c_out'] for transport in existing_transport_list)
+
+                # Multiply c_out_sum by -1
+                c_out_sum *= -1
+
+                # Update the data object with the multiplied c_out_sum
+                data['c_out_sum'] = c_out_sum
+
+                # Update the existing data with the updated transport list and c_out_sum
+                doc.reference.update({
+                    'transport': existing_transport_list,
+                    'c_out_sum': c_out_sum
+                })
+
+                return jsonify({"data": data, "error": False, "message": "Transport data added successfully"}), 200
+
         else:
          # Create data object to be stored in Firestore with initial transport
+            c_out_sum = c_out*-1
             data = {
             'uuid': uuid,
             'user_id': request.user_id,
             'email': request.email,
             'name': request.username,
+            'c_out_sum':c_out_sum,
             'transport': [
                 {   
                     'index':0,
@@ -743,6 +790,18 @@ def delete_article(article_id):
     else:
         # If the article is not found, return a 404 response
         return jsonify({'error': 'Article not found'}), 404
-        
+
+@app.route("/user/<user_id>/status", methods=["GET"])
+@validate_token
+def status(user_id):
+    try:
+
+        users_ref = db.collection('users')
+        query = users_ref.where('user_id', '==', user_id).limit(1)
+        user_data = query.stream()
+        return{"Succes"},200
+    except Exception as e:
+        return {'error': str(e)}, 500    
+
 if __name__ == "__main__":
     app.run(debug=True)
