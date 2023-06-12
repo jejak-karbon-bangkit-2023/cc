@@ -239,7 +239,7 @@ def predict():
 
             # Update the existing data with the updated plant list and c_in_sum
             doc.reference.update({
-                    'transport': existing_plant_list,
+                    'plant': existing_plant_list,
                     'c_in_sum': c_in_sum
                 })
 
