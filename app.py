@@ -1,3 +1,4 @@
+
 from logging import exception
 import os
 import io
@@ -188,7 +189,7 @@ def predict():
     query = users_ref.where('user_id', '==', request.user_id).limit(1)
     existing_data = list(query.stream()) 
 
-     # Initialize the data dictionary
+
     data = {}
 
     if existing_data:
